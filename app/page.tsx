@@ -1,65 +1,138 @@
-import Image from "next/image";
+// src/app/page.tsx
 
-export default function Home() {
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { useProductContext } from '@/context/ProductContext';
+import ProductList from '@/components/ProductList';
+import SearchBar from '@/components/SearchBar';
+import Filter from '@/components/Filter';
+import Pagination from '@/components/Pagination';
+import { DanhMuc } from '@/types/product';
+
+const ITEMS_PER_PAGE = 6;
+
+export default function HomePage() {
+  const { state, deleteProduct } = useProductContext();
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<DanhMuc | 'Tất cả'>('Tất cả');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredProducts = useMemo(() => {
+    return state.products.filter(product => {
+      const matchesSearch = product.ten
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+      const matchesCategory = selectedCategory === 'Tất cả' || 
+        product.danhMuc === selectedCategory;
+
+      const productPrice = product.gia;
+      const min = minPrice ? parseFloat(minPrice) : 0;
+      const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+      const matchesPrice = productPrice >= min && productPrice <= max;
+
+      return matchesSearch && matchesCategory && matchesPrice;
+    });
+  }, [state.products, searchTerm, selectedCategory, minPrice, maxPrice]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, minPrice, maxPrice]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('Tất cả');
+    setMinPrice('');
+    setMaxPrice('');
+    setCurrentPage(1);
+  };
+
+  const handleDelete = (id: number) => {
+    deleteProduct(id);
+    if (currentProducts.length === 1 && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          📦 Danh Sách Sản Phẩm
+        </h1>
+        <p className="text-gray-600">
+          Quản lý và tìm kiếm sản phẩm của bạn
+        </p>
+      </div>
+
+      <div className="mb-6">
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <div className="sticky top-4">
+            <Filter
+              selectedCategory={selectedCategory}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              onCategoryChange={setSelectedCategory}
+              onMinPriceChange={setMinPrice}
+              onMaxPriceChange={setMaxPrice}
+              onResetFilters={handleResetFilters}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
-      </main>
+
+        <div className="lg:col-span-3 space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <p className="text-gray-700">
+              Hiển thị{' '}
+              <span className="font-semibold text-blue-600">
+                {filteredProducts.length}
+              </span>{' '}
+              sản phẩm
+              {searchTerm && ` cho "${searchTerm}"`}
+              {selectedCategory !== 'Tất cả' && ` trong danh mục "${selectedCategory}"`}
+            </p>
+          </div>
+
+          <ProductList
+            products={currentProducts}
+            onDelete={handleDelete}
+          />
+
+          {/* Pagination */}
+          {filteredProducts.length > 0 && totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalProducts={filteredProducts.length}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
